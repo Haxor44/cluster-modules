@@ -12,4 +12,19 @@ override.tf.json
 *_override.tf.json
 .terraformrc
 terraform.rc
-.terraform.lock.hcl
+
+# Commit .terraform.lock.hcl for reproducible provider versions
+# !.terraform.lock.hcl
+
+# Secrets & credentials
+*.pem
+*.key
+*.p12
+*.pfx
+.env
+.env.*
+secrets.auto.tfvars
+
+# Backup files
+*.backup
+*.bak

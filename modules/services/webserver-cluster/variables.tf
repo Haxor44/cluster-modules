@@ -1,3 +1,8 @@
+variable "cluster_name" {
+  description = "The name to use for all cluster resources"
+  type        = string
+}
+
 variable "variable_instance_type" {
   
     description = "The type of ec2 instance"
