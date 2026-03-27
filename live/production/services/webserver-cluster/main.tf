@@ -1,7 +1,7 @@
 # live/production/services/webserver-cluster/main.tf
 
 module "webserver_cluster" {
-  source = "../../../../modules/services/webserver-cluster"
+  source = "github.com/haxor44/cluster-modules//modules/services/webserver-cluster?ref=v0.0.1"
 
   cluster_name  = "webservers-production"
   variable_instance_type = "t2.medium"
