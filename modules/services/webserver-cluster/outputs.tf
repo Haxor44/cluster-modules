@@ -8,3 +8,7 @@ output "asg_name" {
   description = "The name of the auto scaling group"
 }
 
+output "tg_arn" {
+  value = aws_lb_target_group.web-tg.arn
+  description = "The ARN of the target group"
+}
