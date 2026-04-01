@@ -1,6 +1,7 @@
 variable "cluster_name" {
   description = "The name to use for all cluster resources"
   type        = string
+
 }
 
 variable "variable_instance_type" {
@@ -21,6 +22,30 @@ variable "variable_user_data_bool"{
     type =  bool
     default = true
 }
+
+variable "enable_autoscaling" {
+description = "If set to true, enable auto scaling"
+type = bool
+}
+
+
+variable "enable_detailed_monitoring" {
+  description = "Enable CloudWatch detailed monitoring (incurs additional cost)"
+  type        = bool
+  default     = true
+}
+
+variable "environment" {
+  description = "Deployment environment: dev, staging, or production"
+  type        = string
+
+  validation {
+    condition     = contains(["dev", "staging", "production"], var.environment)
+    error_message = "Environment must be dev, staging, or production."
+  }
+}
+
+
 
 variable "variable_launch_template_name" {
   description = "Name for the launch template"

@@ -40,6 +40,14 @@ data "aws_subnets" "default" {
     }
 }
 
+locals {
+  is_production = var.environment == "production"
+
+  instance_type      = local.is_production ? "t2.micro" : "t3.micro"
+  min_size           = local.is_production ? 3 : 1
+  max_size           = local.is_production ? 10 : 3
+  enable_monitoring  = local.is_production ? true : false
+}
 
 
 resource "aws_launch_template" "web" {
@@ -68,8 +76,8 @@ resource "aws_autoscaling_group" "web-asg" {
       version = var.variable_asg_lt_version
     }
     /* The min_size and max_size parameters specify the minimum and maximum number of instances that the auto scaling group should maintain. */
-    min_size = var.variable_min_size
-    max_size = var.variable_max_size
+    min_size = local.min_size
+    max_size = local.max_size
     /* The vpc_zone_identifier parameter is used to specify the subnets that the auto scaling
          group should use to launch the instances. */
     vpc_zone_identifier = data.aws_subnets.default.ids
@@ -173,3 +181,28 @@ resource "aws_lb_listener_rule" "web-lb-listener-rule"{
         }
     }
 }
+
+
+# We create the auto scaling policy to automatically scale out our instances when the average CPU utilization exceeds 70% for 5 minutes
+resource "aws_autoscaling_policy" "scale_out" {
+  count = var.enable_autoscaling ? 1 : 0
+
+  name = "scale_out"
+  autoscaling_group_name = aws_autoscaling_group.web-asg.name
+  
+}
+
+resource "aws_cloudwatch_metric_alarm" "high_cpu" {
+  count = local.enable_monitoring ? 1 : 0
+
+  alarm_name          = "${var.cluster_name}-high-cpu"
+  comparison_operator = "GreaterThanThreshold"
+  evaluation_periods  = 2
+  metric_name         = "CPUUtilization"
+  namespace           = "AWS/EC2"
+  period              = 120
+  statistic           = "Average"
+  threshold           = 80
+  alarm_description   = "CPU utilization exceeded 80%"
+}
+
