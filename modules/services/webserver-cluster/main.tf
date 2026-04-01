@@ -47,6 +47,8 @@ locals {
   min_size           = local.is_production ? 3 : 1
   max_size           = local.is_production ? 10 : 3
   enable_monitoring  = local.is_production ? true : false
+
+  environments = ["blue", "green"]
 }
 
 
@@ -88,7 +90,7 @@ resource "aws_autoscaling_group" "web-asg" {
          group should use to launch the instances. */
     vpc_zone_identifier = data.aws_subnets.default.ids
     /* The target_group_arns parameter is used to specify the target groups that the auto scaling group should register the instances with. */
-    target_group_arns = [aws_lb_target_group.web-tg.arn]
+    target_group_arns = [for tg in aws_lb_target_group.env_tg : tg.arn]
     health_check_type = var.variable_asg_health_check_type
 
     /* The lifecycle block is used to specify that the auto scaling group should be created before any existing auto scaling group is destroyed. This is important to ensure that there is no downtime when updating the auto scaling group. */
@@ -112,12 +114,7 @@ resource "aws_lb_listener" "web-lb-listener"{
     protocol = var.variable_lb_listener_protocol
     default_action {
       type = var.variable_lb_da_type
-
-      fixed_response {
-        content_type = var.variable_lb_da_fixed_response_content_type
-        message_body = var.variable_lb_da_fixed_response_message_body
-        status_code = var.variable_lb_da_fixed_response_code
-      }
+      target_group_arn = aws_lb_target_group.env_tg[var.active_environment].arn
     }
 }
 
@@ -157,42 +154,25 @@ resource "aws_security_group" "web-sg"{
     }
 }
 
-# We create the target group to register our instances in the auto scaling group with the load balancer
-resource "aws_lb_target_group" "web-tg"{
-    name = var.variable_lb_tg_name
-    port = var.variable_server_port
-    protocol = var.variable_lb_listener_protocol
-    vpc_id = data.aws_vpc.default.id
+# We create the target groups for blue-green deployment
+resource "aws_lb_target_group" "env_tg" {
+  for_each = toset(local.environments)
 
-    # This target group will health check your Instances by periodically sending an HTTP request to each Instance and will consider the Instance “healthy” only if the Instance returns a response that matches the configured matcher
-    health_check {
-      path = var.variable_alb_tg_health_check.path
-      protocol = var.variable_alb_tg_health_check.protocol
-      matcher = var.variable_alb_tg_health_check.matcher
-      interval = var.variable_alb_tg_health_check.interval
-      timeout = var.variable_alb_tg_health_check.timeout
-      healthy_threshold = var.variable_alb_tg_health_check.healthy_threshold
-      unhealthy_threshold = var.variable_alb_tg_health_check.unhealthy_threshold
+  name     = "${var.cluster_name}-${each.key}-tg"
+  port     = var.variable_server_port
+  protocol = var.variable_lb_listener_protocol
+  vpc_id   = data.aws_vpc.default.id
 
-    }
+  health_check {
+    path                = var.variable_alb_tg_health_check.path
+    protocol            = var.variable_alb_tg_health_check.protocol
+    matcher             = var.variable_alb_tg_health_check.matcher
+    interval            = var.variable_alb_tg_health_check.interval
+    timeout             = var.variable_alb_tg_health_check.timeout
+    healthy_threshold   = var.variable_alb_tg_health_check.healthy_threshold
+    unhealthy_threshold = var.variable_alb_tg_health_check.unhealthy_threshold
+  }
 }
-
-resource "aws_lb_listener_rule" "web-lb-listener-rule"{
-    listener_arn = aws_lb_listener.web-lb-listener.arn
-    priority = var.variable_lb_listener_rule_priority
-
-    action {
-        type = var.variable_lb_listener_rule_action_type
-        target_group_arn = aws_lb_target_group.web-tg.arn
-    }
-
-    condition {
-        path_pattern {
-            values = var.variable_lb_listener_rule_condition_path_pattern_values
-        }
-    }
-}
-
 
 # We create the auto scaling policy to automatically scale out our instances when the average CPU utilization exceeds 70% for 5 minutes
 resource "aws_autoscaling_policy" "scale_out" {

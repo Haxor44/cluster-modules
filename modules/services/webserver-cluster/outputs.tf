@@ -9,6 +9,6 @@ output "asg_name" {
 }
 
 output "tg_arn" {
-  value = aws_lb_target_group.web-tg.arn
-  description = "The ARN of the target group"
+  value = aws_lb_target_group.env_tg[var.active_environment].arn
+  description = "The ARN of the active target group"
 }

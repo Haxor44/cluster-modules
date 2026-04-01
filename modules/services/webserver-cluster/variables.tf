@@ -9,6 +9,16 @@ variable "server_Text" {
   type = string
 }
 
+variable "active_environment" {
+  description = "The environment to deploy the cluster in"
+  type = string
+  default = "blue"
+  validation {
+    condition     = contains(["blue", "green"], var.active_environment)
+    error_message = "Active environment must be either 'blue' or 'green'."
+  }
+}
+
 variable "variable_instance_type" {
   
     description = "The type of ec2 instance"
@@ -170,7 +180,7 @@ variable "variable_lb_listener_rule_condition_path_pattern_values" {
 variable "variable_lb_da_type" {
   description = "The type of the default action for the lb listener"
   type = string
-  default = "fixed-response"
+  default = "forward"
 }
 
 variable "variable_lb_da_fixed_response_code" {
