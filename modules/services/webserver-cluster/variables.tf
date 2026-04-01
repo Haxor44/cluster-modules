@@ -1,7 +1,12 @@
 variable "cluster_name" {
   description = "The name to use for all cluster resources"
   type        = string
+  default = "haxor-asg"
+}
 
+variable "server_Text" {
+  description = "Sample text that is displayed in html"
+  type = string
 }
 
 variable "variable_instance_type" {

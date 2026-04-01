@@ -59,7 +59,7 @@ resource "aws_launch_template" "web" {
     }
     user_data = base64encode(<<-EOF
                 #!/bin/bash
-                echo "WELCOME TO THE WEB SERVER" > index.html
+                echo "${var.server_Text}" > index.html
                 nohup busybox httpd -f -p ${var.variable_server_port} &
                 EOF
     )
@@ -70,6 +70,8 @@ resource "aws_launch_template" "web" {
 
 # We create the auto scaling group to automatically scale our instances based on demand
 resource "aws_autoscaling_group" "web-asg" {
+     # Use name_prefix instead of name to let AWS generate a unique name
+    name_prefix = "${var.cluster_name}-"
     /* The launch template parameter specifies the launch template that will be used to launch the instances in the auto scaling group. */
     launch_template {
       id = aws_launch_template.web.id
@@ -78,12 +80,21 @@ resource "aws_autoscaling_group" "web-asg" {
     /* The min_size and max_size parameters specify the minimum and maximum number of instances that the auto scaling group should maintain. */
     min_size = local.min_size
     max_size = local.max_size
+
+    # Wait for at least this many instances to pass health checks before
+    # considering the ASG deployment complete
+    min_elb_capacity = local.min_size
     /* The vpc_zone_identifier parameter is used to specify the subnets that the auto scaling
          group should use to launch the instances. */
     vpc_zone_identifier = data.aws_subnets.default.ids
     /* The target_group_arns parameter is used to specify the target groups that the auto scaling group should register the instances with. */
     target_group_arns = [aws_lb_target_group.web-tg.arn]
     health_check_type = var.variable_asg_health_check_type
+
+    /* The lifecycle block is used to specify that the auto scaling group should be created before any existing auto scaling group is destroyed. This is important to ensure that there is no downtime when updating the auto scaling group. */
+    lifecycle {
+      create_before_destroy = true
+    }
 }
 
 # We create the load balancer to distribute traffic to our instances in the auto scaling group
